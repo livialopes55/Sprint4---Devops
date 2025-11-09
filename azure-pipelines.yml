@@ -1,0 +1,51 @@
+trigger:
+  branches:
+    include:
+      - main
+
+variables:
+  imageRepository: 'mottuapi'
+  dockerfilePath: 'MottuApi/Dockerfile'
+  buildContext: '.'
+  tag: '$(Build.BuildId)'
+  acrServiceConnection: 'acr-connection'          
+  acrLoginServer: 'mottuacr18249.azurecr.io'      
+
+stages:
+- stage: CI
+  displayName: 'Build & Push'
+  jobs:
+  - job: Build_Push
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+    - task: DotNetCoreCLI@2
+      displayName: 'Restore'
+      inputs:
+        command: 'restore'
+        projects: 'MottuApi/MottuApi.csproj'
+
+    - task: DotNetCoreCLI@2
+      displayName: 'Build'
+      inputs:
+        command: 'build'
+        projects: 'MottuApi/MottuApi.csproj'
+        arguments: '--configuration Release'
+
+    - task: Docker@2
+      displayName: 'Docker Login ACR'
+      inputs:
+        containerRegistry: '$(acrServiceConnection)'
+        command: 'login'
+
+    - task: Docker@2
+      displayName: 'Build & Push Image'
+      inputs:
+        repository: '$(imageRepository)'
+        command: 'buildAndPush'
+        Dockerfile: '$(dockerfilePath)'
+        buildContext: '$(buildContext)'
+        containerRegistry: '$(acrServiceConnection)'
+        tags: |
+          $(tag)
+          latest
